@@ -39,6 +39,7 @@ const hideTooltipOnBreadcrumbsChange = {
   },
 };
 
+
 /**
  * Hides tooltip when clicking inside.
  */
@@ -54,6 +55,74 @@ const hideTooltipOnClickInside = {
       },
       onHide() {
         instance.popper.removeEventListener('click', onClick);
+      },
+    };
+  },
+};
+
+/**
+ * Hides tooltip when mouse leaves the dropdown.
+ * Only applies to 'dropdown' theme (three-dot menus).
+ */
+const hideTooltipOnMouseLeave = {
+  name: 'hideTooltipOnMouseLeave',
+  fn(instance: Instance) {
+    // Only apply to dropdown theme (three-dot menus)
+    if (instance.props.theme !== 'dropdown') {
+      return {};
+    }
+
+    let hideTimeout: number | null = null;
+
+    const clearHideTimeout = () => {
+      if (hideTimeout) {
+        clearTimeout(hideTimeout);
+        hideTimeout = null;
+      }
+    };
+
+    const scheduleHide = () => {
+      clearHideTimeout();
+      hideTimeout = window.setTimeout(() => {
+        instance.hide();
+      }, 150); // Small delay to allow moving between button and content
+    };
+
+    const onMouseLeave = (event: MouseEvent) => {
+      // Only hide if the mouse is leaving the entire tippy container
+      const relatedTarget = event.relatedTarget as Node;
+      if (!instance.popper.contains(relatedTarget)) {
+        scheduleHide();
+      }
+    };
+
+    const onToggleMouseLeave = (event: MouseEvent) => {
+      // Hide when mouse leaves the toggle button
+      const relatedTarget = event.relatedTarget as Node;
+      // Only hide if not moving to the dropdown content
+      if (!instance.popper.contains(relatedTarget)) {
+        scheduleHide();
+      }
+    };
+
+    const onMouseEnter = () => {
+      // Cancel hide if mouse enters any part of the dropdown
+      clearHideTimeout();
+    };
+
+    return {
+      onShow() {
+        instance.popper.addEventListener('mouseleave', onMouseLeave);
+        instance.reference.addEventListener('mouseleave', onToggleMouseLeave);
+        instance.popper.addEventListener('mouseenter', onMouseEnter);
+        instance.reference.addEventListener('mouseenter', onMouseEnter);
+      },
+      onHide() {
+        clearHideTimeout();
+        instance.popper.removeEventListener('mouseleave', onMouseLeave);
+        instance.reference.removeEventListener('mouseleave', onToggleMouseLeave);
+        instance.popper.removeEventListener('mouseenter', onMouseEnter);
+        instance.reference.removeEventListener('mouseenter', onMouseEnter);
       },
     };
   },
@@ -294,6 +363,7 @@ export class DropdownController extends Controller<HTMLElement> {
       hideTooltipOnBreadcrumbsChange,
       hideTooltipOnEsc,
       rotateToggleIcon,
+      hideTooltipOnMouseLeave,
     ];
     if (this.hideOnClickValue) {
       plugins.push(hideTooltipOnClickInside);
