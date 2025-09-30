@@ -61,23 +61,20 @@ const hideTooltipOnClickInside = {
 };
 
 /**
- * Hides tooltip when mouse leaves the dropdown.
- * Only applies to 'dropdown' theme (three-dot menus).
+ * Auto-hides a three‑dot action menu when the pointer leaves BOTH
+ * the toggle button and the rendered dropdown content.
+ * The dropdown must be inside a <section data-panel>
  */
 const hideTooltipOnMouseLeave = {
   name: 'hideTooltipOnMouseLeave',
   fn(instance: Instance) {
-    // Only apply to dropdown theme (three-dot menus)
-    // Further restrict: only enable this behaviour when BOTH:
-    // 1) theme is 'dropdown' AND 2) inside a <section data-panel> ancestor.
-    // Outside those conditions we no-op so other themes (drilldown, popup, etc.) retain their behaviour.
     if (
       instance.props.theme !== 'dropdown' ||
       !instance.reference.closest('section[data-panel]')
     ) {
       return {};
     }
-    // Single timeout + shared handlers keeps logic minimal
+
     let hideTimeout: number | undefined;
 
     const cancel = () => {
@@ -87,25 +84,27 @@ const hideTooltipOnMouseLeave = {
       }
     };
 
+    // Schedule hiding the tooltip after a short delay
+    // to allow for pointer travel between the reference and the popper.
     const schedule = () => {
       cancel();
-      hideTimeout = window.setTimeout(() => instance.hide(), 150); // allow pointer travel
+      hideTimeout = window.setTimeout(() => instance.hide(), 150);
     };
 
     const handleLeave = (e: MouseEvent) => {
       const next = e.relatedTarget as Node | null;
-      // Hide only if moving outside the popper entirely
       if (!next || !instance.popper.contains(next)) {
         schedule();
       }
     };
 
-    const handleEnter = cancel; // Re-entering cancels pending hide
+    const handleEnter = cancel;
 
     const add = (el: Element) => {
       el.addEventListener('mouseleave', handleLeave);
       el.addEventListener('mouseenter', handleEnter);
     };
+
     const remove = (el: Element) => {
       el.removeEventListener('mouseleave', handleLeave);
       el.removeEventListener('mouseenter', handleEnter);
