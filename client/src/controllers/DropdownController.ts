@@ -71,58 +71,49 @@ const hideTooltipOnMouseLeave = {
     if (instance.props.theme !== 'dropdown') {
       return {};
     }
+    // Single timeout + shared handlers keeps logic minimal
+    let hideTimeout: number | undefined;
 
-    let hideTimeout: number | null = null;
-
-    const clearHideTimeout = () => {
-      if (hideTimeout) {
+    const cancel = () => {
+      if (hideTimeout !== undefined) {
         clearTimeout(hideTimeout);
-        hideTimeout = null;
+        hideTimeout = undefined;
       }
     };
 
-    const scheduleHide = () => {
-      clearHideTimeout();
-      hideTimeout = window.setTimeout(() => {
-        instance.hide();
-      }, 150); // Small delay to allow moving between button and content
+    const schedule = () => {
+      cancel();
+      hideTimeout = window.setTimeout(() => instance.hide(), 150); // allow pointer travel
     };
 
-    const onMouseLeave = (event: MouseEvent) => {
-      // Only hide if the mouse is leaving the entire tippy container
-      const relatedTarget = event.relatedTarget as Node;
-      if (!instance.popper.contains(relatedTarget)) {
-        scheduleHide();
+    const handleLeave = (e: MouseEvent) => {
+      const next = e.relatedTarget as Node | null;
+      // Hide only if moving outside the popper entirely
+      if (!next || !instance.popper.contains(next)) {
+        schedule();
       }
     };
 
-    const onToggleMouseLeave = (event: MouseEvent) => {
-      // Hide when mouse leaves the toggle button
-      const relatedTarget = event.relatedTarget as Node;
-      // Only hide if not moving to the dropdown content
-      if (!instance.popper.contains(relatedTarget)) {
-        scheduleHide();
-      }
-    };
+    const handleEnter = cancel; // Re-entering cancels pending hide
 
-    const onMouseEnter = () => {
-      // Cancel hide if mouse enters any part of the dropdown
-      clearHideTimeout();
+    const add = (el: Element) => {
+      el.addEventListener('mouseleave', handleLeave);
+      el.addEventListener('mouseenter', handleEnter);
+    };
+    const remove = (el: Element) => {
+      el.removeEventListener('mouseleave', handleLeave);
+      el.removeEventListener('mouseenter', handleEnter);
     };
 
     return {
       onShow() {
-        instance.popper.addEventListener('mouseleave', onMouseLeave);
-        instance.reference.addEventListener('mouseleave', onToggleMouseLeave);
-        instance.popper.addEventListener('mouseenter', onMouseEnter);
-        instance.reference.addEventListener('mouseenter', onMouseEnter);
+        add(instance.popper);
+        add(instance.reference);
       },
       onHide() {
-        clearHideTimeout();
-        instance.popper.removeEventListener('mouseleave', onMouseLeave);
-        instance.reference.removeEventListener('mouseleave', onToggleMouseLeave);
-        instance.popper.removeEventListener('mouseenter', onMouseEnter);
-        instance.reference.removeEventListener('mouseenter', onMouseEnter);
+        cancel();
+        remove(instance.popper);
+        remove(instance.reference);
       },
     };
   },
