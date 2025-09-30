@@ -39,7 +39,6 @@ const hideTooltipOnBreadcrumbsChange = {
   },
 };
 
-
 /**
  * Hides tooltip when clicking inside.
  */
