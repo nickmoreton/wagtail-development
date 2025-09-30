@@ -68,7 +68,13 @@ const hideTooltipOnMouseLeave = {
   name: 'hideTooltipOnMouseLeave',
   fn(instance: Instance) {
     // Only apply to dropdown theme (three-dot menus)
-    if (instance.props.theme !== 'dropdown') {
+    // Further restrict: only enable this behaviour when BOTH:
+    // 1) theme is 'dropdown' AND 2) inside a <section data-panel> ancestor.
+    // Outside those conditions we no-op so other themes (drilldown, popup, etc.) retain their behaviour.
+    if (
+      instance.props.theme !== 'dropdown' ||
+      !instance.reference.closest('section[data-panel]')
+    ) {
       return {};
     }
     // Single timeout + shared handlers keeps logic minimal
